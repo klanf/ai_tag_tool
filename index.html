@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 绘图标签分类工具</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-quaternary: #2d2d5a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0c0;
+            --text-muted: #6a6a8a;
+            --border-color: #2a2a4a;
+            --accent-primary: #6366f1;
+            --accent-secondary: #ec4899;
+            --accent-success: #22c55e;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-panel {
+            width: 40%;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background: rgba(26, 26, 46, 0.8);
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .input-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        #tagInput {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: monospace;
+            resize: vertical;
+            min-height: 200px;
+            height: 100%;
+            flex: 1;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        #tagInput:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .autocomplete-container {
+            position: relative;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .autocomplete-list.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .autocomplete-item:hover {
+            background: var(--bg-quaternary);
+        }
+
+        .autocomplete-item.active {
+            background: var(--accent-primary);
+        }
+
+        .autocomplete-name {
+            font-family: monospace;
+        }
+
+        .autocomplete-trans {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #2d2d5a;
+            border-color: var(--text-muted);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: var(--bg-tertiary);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-item span {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .result-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .category-section {
+            margin-bottom: 16px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .category-header:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .category-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .category-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+
+        .category-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: var(--bg-primary);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .copy-btn {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent-primary);
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(99, 102, 241, 0.3);
+        }
+
+        .add-btn {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-success);
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .add-btn:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .category-content {
+            padding: 0 12px 12px;
+            display: block;
+        }
+
+        .category-content.collapsed {
+            display: none;
+        }
+
+        .subgroup-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 8px 0 6px;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .subgroup-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-left: 10px;
+        }
+
+        .tag-chip {
+            position: relative;
+            background: var(--bg-quaternary);
+            padding: 5px 10px 5px 20px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            max-width: 350px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tag-chip:hover {
+            background: #353570;
+            transform: translateY(-1px);
+        }
+
+        .tag-chip.deleted {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .tag-delete {
+            position: absolute;
+            right: -18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            background: var(--accent-danger);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 9px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tag-chip:hover .tag-delete {
+            right: -4px;
+            opacity: 1;
+        }
+
+        .tag-delete:hover {
+            background: #dc2626;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .tag-translation {
+            color: var(--text-secondary);
+            margin-left: 3px;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        .tag-chip.unknown .tag-name {
+            color: var(--text-muted);
+        }
+
+        .tag-chip.unknown .tag-translation {
+            color: var(--accent-warning);
+        }
+
+        .tag-favorite {
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 1;
+            transition: all 0.3s;
+        }
+
+        .tag-favorite.favorited {
+            color: #fbbf24;
+            opacity: 1;
+        }
+
+        .tag-favorite:hover {
+            transform: translateY(-50%) scale(1.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            color: var(--text-secondary);
+        }
+
+        .modal-footer {
+            margin-top: 16px;
+            text-align: right;
+        }
+
+        .fav-tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .fav-tag-chip {
+            background: var(--bg-tertiary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .fav-tag-chip:hover {
+            background: #2d2d5a;
+            transform: translateY(-2px);
+        }
+
+        .history-chip {
+            display: inline-flex;
+            align-items: center;
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .history-chip:hover {
+            background: #2d2d5a;
+        }
+
+        .history-chip span {
+            color: var(--text-secondary);
+        }
+
+        .history-delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 0 4px;
+            transition: color 0.3s;
+        }
+
+        .history-delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .fav-tag-name {
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+
+        .fav-tag-translation {
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            background: #2d2d5a;
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .history-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .history-tags {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .history-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-danger);
+            border: none;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .history-delete:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                max-height: 40vh;
+            }
+
+            .right-panel {
+                flex: 1;
+            }
+
+            .btn-group {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <header>
+                <h1>🎨 AI 绘图标签分类工具</h1>
+            </header>
+
+            <div class="input-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div class="autocomplete-container" style="flex: 1; display: flex; flex-direction: column;">
+                    <textarea id="tagInput" placeholder="输入或粘贴标签，自动补全支持..." oninput="handleInput(event)" onkeydown="handleKeydown(event)" onblur="hideAutocomplete()"></textarea>
+                    <div class="autocomplete-list" id="autocompleteList"></div>
+                </div>
+                <div class="btn-group" style="margin-top: 12px;">
+                    <button class="btn btn-primary" onclick="parseTags()">
+                        <span>🔍</span> 解析分类
+                    </button>
+                    <button class="btn btn-secondary" onclick="pasteFromClipboard()">
+                        <span>📋</span> 粘贴
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearInput()">
+                        <span>🗑️</span> 清空
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadExample()">
+                        <span>📝</span> 示例
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateRandomTags()">
+                        <span>🎲</span> 随机
+                    </button>
+                </div>
+                <div class="stats-bar" id="statsBar" style="margin-top: 10px;">
+                    <div class="stat-item">总标签: <span id="totalCount">0</span></div>
+                    <div class="stat-item">已识别: <span id="knownCount">0</span></div>
+                    <div class="stat-item">未识别: <span id="unknownCount">0</span></div>
+                </div>
+            </div>
+
+            <div style="padding: 12px; border-top: 1px solid var(--border-color);">
+                <button class="btn btn-primary" onclick="saveToHistory()" style="width: 100%; margin-bottom: 6px;">
+                    <span>💾</span> 保存到历史
+                </button>
+                <button class="btn btn-secondary" onclick="showHistory()" style="width: 100%;">
+                    <span>📜</span> 历史记录
+                </button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <header style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>📊 分类结果</h1>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn btn-secondary btn-sm" onclick="showAddTagModal()" id="addTagBtn" style="display: none;">
+                        <span>+</span> 添加标签
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="copyAllTags()" id="copyAllBtn" style="display: none;">
+                        <span>📋</span> 复制全部
+                    </button>
+                </div>
+            </header>
+            <div class="result-section" id="resultSection">
+                <div class="empty-state" id="emptyState">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 6v13M3 13h18M8 13l5-5 5 5"/>
+                    </svg>
+                    <p>请输入或粘贴标签</p>
+                    <p style="font-size: 0.8rem; margin-top: 6px;">支持格式: 英文标签，用逗号或换行分隔</p>
+                </div>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">提示</span>
+                <button class="modal-close" onclick="hideModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalText"></div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="hideModal()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let TAG_DICTIONARY = null;
+        let currentClassified = null;
+        let favorites = JSON.parse(localStorage.getItem('tagFavorites') || '{}');
+        let allTags = [];
+        let autocompleteIndex = -1;
+
+        async function loadDictionary() {
+            try {
+                const response = await fetch('tags_dictionary.json');
+                TAG_DICTIONARY = await response.json();
+                allTags = Object.keys(TAG_DICTIONARY.tags);
+                console.log('Dictionary loaded:', allTags.length, 'tags');
+            } catch (error) {
+                console.error('Failed to load dictionary:', error);
+                showModal('错误', '标签数据加载失败');
+            }
+        }
+
+        function handleInput(event) {
+            const input = event.target.value;
+            const lastCommaIndex = input.lastIndexOf(',');
+            const lastNewlineIndex = input.lastIndexOf('\n');
+            const lastSplitIndex = Math.max(lastCommaIndex, lastNewlineIndex);
+            const currentInput = input.substring(lastSplitIndex + 1).trim().toLowerCase().replace(/ /g, '_');
+
+            if (currentInput.length >= 1) {
+                showAutocomplete(currentInput);
+            } else {
+                hideAutocomplete();
+            }
+        }
+
+        function showAutocomplete(query) {
+            const list = document.getElementById('autocompleteList');
+            const filtered = allTags.filter(tag => {
+                const tagInfo = TAG_DICTIONARY.tags[tag];
+                const translation = tagInfo ? tagInfo.translation || '' : '';
+                const tagLower = tag.toLowerCase();
+                const queryLower = query.toLowerCase();
+                return tagLower.startsWith(queryLower) || tagLower.includes(queryLower) || translation.toLowerCase().includes(queryLower);
+            }).slice(0, 15);
+
+            const seen = new Set();
+            const uniqueFiltered = filtered.filter(tag => {
+                const normalized = tag.replace(/_/g, ' ').toLowerCase();
+                if (seen.has(normalized)) return false;
+                seen.add(normalized);
+                return true;
+            });
+
+            if (uniqueFiltered.length === 0) {
+                list.classList.remove('show');
+                return;
+            }
+
+            let html = '';
+            uniqueFiltered.forEach((tag, index) => {
+                const tagInfo = TAG_DICTIONARY.tags[tag];
+                const translation = tagInfo ? tagInfo.translation : '';
+                html += `<div class="autocomplete-item" data-tag="${tag}" onclick="selectAutocomplete('${tag}')">`;
+                html += `<span class="autocomplete-name">${tag.replace(/_/g, ' ')}</span>`;
+                if (translation) {
+                    html += `<span class="autocomplete-trans">${translation}</span>`;
+                }
+                html += '</div>';
+            });
+
+            list.innerHTML = html;
+            list.classList.add('show');
+            autocompleteIndex = -1;
+        }
+
+        function hideAutocomplete() {
+            setTimeout(() => {
+                document.getElementById('autocompleteList').classList.remove('show');
+            }, 200);
+        }
+
+        function selectAutocomplete(tag) {
+            const input = document.getElementById('tagInput');
+            const value = input.value;
+            const lastCommaIndex = value.lastIndexOf(',');
+            const lastNewlineIndex = value.lastIndexOf('\n');
+            const lastSplitIndex = Math.max(lastCommaIndex, lastNewlineIndex);
+
+            const newValue = value.substring(0, lastSplitIndex + 1) + (lastSplitIndex >= 0 ? ' ' : '') + tag.replace(/_/g, ' ') + ', ';
+            input.value = newValue;
+            hideAutocomplete();
+            input.focus();
+            input.setSelectionRange(newValue.length, newValue.length);
+        }
+
+        function handleKeydown(event) {
+            const list = document.getElementById('autocompleteList');
+            const items = list.querySelectorAll('.autocomplete-item');
+
+            if (!list.classList.contains('show') || items.length === 0) {
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                    parseTags();
+                }
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                autocompleteIndex = (autocompleteIndex + 1) % items.length;
+                updateAutocompleteSelection(items);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                autocompleteIndex = (autocompleteIndex - 1 + items.length) % items.length;
+                updateAutocompleteSelection(items);
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault();
+                if (autocompleteIndex >= 0) {
+                    const tag = items[autocompleteIndex].dataset.tag;
+                    selectAutocomplete(tag);
+                }
+            }
+        }
+
+        function updateAutocompleteSelection(items) {
+            items.forEach((item, index) => {
+                if (index === autocompleteIndex) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        function pasteFromClipboard() {
+            navigator.clipboard.readText().then(text => {
+                document.getElementById('tagInput').value = text;
+                parseTags();
+            }).catch(err => {
+                showModal('错误', '无法读取剪贴板');
+            });
+        }
+
+        function clearInput() {
+            document.getElementById('tagInput').value = '';
+            document.getElementById('resultContent').innerHTML = '';
+            document.getElementById('emptyState').style.display = 'block';
+            currentClassified = null;
+            updateStats(null);
+        }
+
+        function loadExample() {
+            const example = '1girl, solo, long_hair, blue_eyes, looking_at_viewer, blush, smile, open_mouth, dress, ribbon, sitting, indoors, masterpiece, best_quality';
+            document.getElementById('tagInput').value = example;
+            parseTags();
+        }
+
+        function parseTags() {
+            const input = document.getElementById('tagInput').value.trim();
+            if (!input) {
+                showModal('提示', '请输入标签');
+                return;
+            }
+
+            const tagStrings = input.split(/[,，\n]+/).map(t => t.trim()).filter(t => t);
+
+            if (!TAG_DICTIONARY) {
+                showModal('提示', '标签数据正在加载中，请稍候');
+                return;
+            }
+
+            const groups = TAG_DICTIONARY.groups;
+            const subgroups = TAG_DICTIONARY.subgroups;
+            const allTagsData = TAG_DICTIONARY.tags;
+
+            const result = {};
+            Object.keys(groups).forEach(gid => {
+                result[gid] = {};
+            });
+            result['0'] = {};
+
+            const processedTags = new Set();
+
+            tagStrings.forEach(originalTag => {
+                const tag = originalTag.toLowerCase().trim();
+                if (!tag || processedTags.has(tag)) return;
+                processedTags.add(tag);
+
+                let tagInfo = allTagsData[tag];
+                
+                if (!tagInfo && tag.includes('_')) {
+                    const spaceVersion = tag.replace(/_/g, ' ');
+                    tagInfo = allTagsData[spaceVersion];
+                }
+                
+                if (!tagInfo && tag.includes(' ')) {
+                    const underscoreVersion = tag.replace(/ /g, '_');
+                    tagInfo = allTagsData[underscoreVersion];
+                }
+
+                let groupId = '0';
+                let subgroupId = '0';
+                let finalTag = tag;
+
+                if (tagInfo) {
+                    if (tagInfo.group_id !== null && tagInfo.group_id !== undefined) {
+                        groupId = String(tagInfo.group_id);
+                    } else {
+                        groupId = '99';
+                    }
+                    subgroupId = tagInfo.subgroup_id !== null && tagInfo.subgroup_id !== undefined ? String(tagInfo.subgroup_id) : '0';
+                    finalTag = tagInfo.tag;
+                }
+
+                if (!(groupId in result)) {
+                    result[groupId] = {};
+                }
+                if (!(subgroupId in result[groupId])) {
+                    result[groupId][subgroupId] = [];
+                }
+
+                result[groupId][subgroupId].push({
+                    tag: finalTag,
+                    translation: tagInfo ? tagInfo.translation : '',
+                    isKnown: !!tagInfo,
+                    hot: tagInfo ? (tagInfo.hot || 0) : 0
+                });
+            });
+
+            Object.keys(result).forEach(gid => {
+                Object.keys(result[gid]).forEach(sgid => {
+                    result[gid][sgid].sort((a, b) => a.tag.localeCompare(b.tag));
+                });
+            });
+
+            currentClassified = result;
+            renderResult(result);
+            updateStats(result);
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('copyAllBtn').style.display = 'inline-flex';
+            document.getElementById('addTagBtn').style.display = 'inline-flex';
+        }
+
+        function copyAllTags() {
+            if (!currentClassified) {
+                showModal('提示', '没有可复制的标签');
+                return;
+            }
+
+            const allTags = [];
+            Object.values(currentClassified).forEach(group => {
+                Object.values(group).forEach(sgTags => {
+                    sgTags.forEach(tag => {
+                        allTags.push(tag.tag.replace(/_/g, ' '));
+                    });
+                });
+            });
+
+            if (allTags.length === 0) {
+                showModal('提示', '没有可复制的标签');
+                return;
+            }
+
+            const text = allTags.join(', ');
+            navigator.clipboard.writeText(text).then(() => {
+                showModal('成功', `已复制 ${allTags.length} 个标签`);
+            }).catch(() => {
+                showModal('错误', '复制失败');
+            });
+        }
+
+        function renderResult(classified) {
+            const container = document.getElementById('resultContent');
+            container.innerHTML = '';
+
+            const groups = TAG_DICTIONARY.groups;
+            const subgroups = TAG_DICTIONARY.subgroups;
+
+            const allGroupIds = Object.keys(classified).filter(gid => gid !== '0');
+            const predefinedGroups = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
+            const otherGroups = allGroupIds.filter(gid => !groups[gid]).sort((a, b) => parseInt(a) - parseInt(b));
+            const groupOrder = [...predefinedGroups, ...otherGroups];
+
+            groupOrder.forEach(groupId => {
+                const groupInfo = groups[groupId];
+                const groupData = classified[groupId];
+                if (!groupData || Object.keys(groupData).length === 0) return;
+
+                const section = document.createElement('div');
+                section.className = 'category-section';
+
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.onclick = () => toggleCategory(section);
+
+                const icon = document.createElement('div');
+                icon.className = 'category-icon';
+                icon.style.background = groupInfo ? groupInfo.color : '#8b5cf6';
+
+                const name = document.createElement('div');
+                name.className = 'category-name';
+                name.textContent = groupInfo ? groupInfo.name : '其他已知';
+
+                let totalTags = 0;
+                Object.values(groupData).forEach(sgTags => totalTags += sgTags.length);
+
+                const count = document.createElement('div');
+                count.className = 'category-count';
+                count.textContent = `${totalTags}个`;
+
+                const actions = document.createElement('div');
+                actions.className = 'category-actions';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.innerHTML = '<span>📋</span>';
+                copyBtn.onclick = (e) => { e.stopPropagation(); copyCategory(groupId); };
+
+                actions.appendChild(copyBtn);
+
+                header.appendChild(icon);
+                header.appendChild(name);
+                header.appendChild(count);
+                header.appendChild(actions);
+                section.appendChild(header);
+
+                const content = document.createElement('div');
+                content.className = 'category-content';
+
+                const sgOrder = Object.keys(groupData).sort((a, b) => parseInt(a) - parseInt(b));
+                sgOrder.forEach(subgroupId => {
+                    const sgTags = groupData[subgroupId];
+                    if (sgTags.length === 0) return;
+
+                    const sgInfo = subgroups[subgroupId];
+
+                    if (sgInfo) {
+                        const sgHeader = document.createElement('div');
+                        sgHeader.className = 'subgroup-header';
+
+                        const sgIcon = document.createElement('div');
+                        sgIcon.className = 'subgroup-icon';
+                        sgIcon.style.background = sgInfo.color;
+
+                        const sgName = document.createElement('span');
+                        sgName.textContent = sgInfo.name;
+
+                        sgHeader.appendChild(sgIcon);
+                        sgHeader.appendChild(sgName);
+                        content.appendChild(sgHeader);
+                    }
+
+                    const tagList = document.createElement('div');
+                    tagList.className = 'tag-list';
+
+                    sgTags.forEach(tagItem => {
+                        const chip = document.createElement('div');
+                        chip.className = `tag-chip${tagItem.isKnown ? '' : ' unknown'}`;
+                        chip.dataset.groupId = groupId;
+                        chip.dataset.subgroupId = subgroupId;
+
+                        const tagName = document.createElement('span');
+                        tagName.className = 'tag-name';
+                        tagName.textContent = tagItem.tag.replace(/_/g, ' ');
+
+                        const tagTrans = document.createElement('span');
+                        tagTrans.className = 'tag-translation';
+                        tagTrans.textContent = tagItem.translation ? `(${tagItem.translation})` : '(未识别)';
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'tag-delete';
+                        deleteBtn.innerHTML = '×';
+                        deleteBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            deleteTag(groupId, subgroupId, tagItem.tag);
+                        };
+
+                        const favBtn = document.createElement('button');
+                        favBtn.className = 'tag-favorite';
+                        favBtn.innerHTML = favorites[tagItem.tag] ? '⭐' : '☆';
+                        if (favorites[tagItem.tag]) favBtn.classList.add('favorited');
+                        favBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            toggleFavorite(tagItem.tag);
+                        };
+
+                        chip.appendChild(tagName);
+                        chip.appendChild(tagTrans);
+                        chip.appendChild(favBtn);
+                        chip.appendChild(deleteBtn);
+                        tagList.appendChild(chip);
+                    });
+
+                    content.appendChild(tagList);
+                });
+
+                section.appendChild(content);
+                container.appendChild(section);
+            });
+
+            const unknownGroup = classified['0'];
+            if (unknownGroup && Object.keys(unknownGroup).length > 0) {
+                const section = document.createElement('div');
+                section.className = 'category-section';
+
+                const header = document.createElement('div');
+                header.className = 'category-header';
+
+                const icon = document.createElement('div');
+                icon.className = 'category-icon';
+                icon.style.background = '#6b7280';
+
+                const name = document.createElement('div');
+                name.className = 'category-name';
+                name.textContent = '未识别';
+
+                let totalTags = 0;
+                Object.values(unknownGroup).forEach(sgTags => totalTags += sgTags.length);
+
+                const count = document.createElement('div');
+                count.className = 'category-count';
+                count.textContent = `${totalTags}个`;
+
+                const actions = document.createElement('div');
+                actions.className = 'category-actions';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.innerHTML = '<span>📋</span>';
+                copyBtn.onclick = (e) => { e.stopPropagation(); copyCategory('0'); };
+
+                actions.appendChild(copyBtn);
+                header.appendChild(icon);
+                header.appendChild(name);
+                header.appendChild(count);
+                header.appendChild(actions);
+                section.appendChild(header);
+
+                const content = document.createElement('div');
+                content.className = 'category-content';
+
+                const tagList = document.createElement('div');
+                tagList.className = 'tag-list';
+
+                Object.values(unknownGroup).forEach(sgTags => {
+                    sgTags.forEach(tagItem => {
+                        const chip = document.createElement('div');
+                        chip.className = 'tag-chip unknown';
+
+                        const tagName = document.createElement('span');
+                        tagName.className = 'tag-name';
+                        tagName.textContent = tagItem.tag.replace(/_/g, ' ');
+
+                        const tagTrans = document.createElement('span');
+                        tagTrans.className = 'tag-translation';
+                        tagTrans.textContent = '(未识别)';
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'tag-delete';
+                        deleteBtn.innerHTML = '×';
+                        deleteBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            deleteTag('0', '0', tagItem.tag);
+                        };
+
+                        chip.appendChild(tagName);
+                        chip.appendChild(tagTrans);
+                        chip.appendChild(deleteBtn);
+                        tagList.appendChild(chip);
+                    });
+                });
+
+                content.appendChild(tagList);
+                section.appendChild(content);
+                container.appendChild(section);
+            }
+        }
+
+        function toggleCategory(section) {
+            const content = section.querySelector('.category-content');
+            if (content) {
+                content.classList.toggle('collapsed');
+            }
+        }
+
+        function updateStats(classified) {
+            if (!classified) {
+                document.getElementById('totalCount').textContent = '0';
+                document.getElementById('knownCount').textContent = '0';
+                document.getElementById('unknownCount').textContent = '0';
+                return;
+            }
+
+            let total = 0;
+            let known = 0;
+
+            Object.values(classified).forEach(group => {
+                Object.values(group).forEach(sgTags => {
+                    sgTags.forEach(tag => {
+                        total++;
+                        if (tag.isKnown) known++;
+                    });
+                });
+            });
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('knownCount').textContent = known;
+            document.getElementById('unknownCount').textContent = total - known;
+        }
+
+        function deleteTag(groupId, subgroupId, tag) {
+            if (!currentClassified || !currentClassified[groupId] || !currentClassified[groupId][subgroupId]) return;
+
+            const index = currentClassified[groupId][subgroupId].findIndex(t => t.tag === tag);
+            if (index > -1) {
+                currentClassified[groupId][subgroupId].splice(index, 1);
+
+                if (currentClassified[groupId][subgroupId].length === 0) {
+                    delete currentClassified[groupId][subgroupId];
+                }
+
+                if (Object.keys(currentClassified[groupId]).length === 0) {
+                    delete currentClassified[groupId];
+                }
+
+                renderResult(currentClassified);
+                updateStats(currentClassified);
+            }
+        }
+
+        function toggleFavorite(tag) {
+            if (favorites[tag]) {
+                delete favorites[tag];
+            } else {
+                favorites[tag] = true;
+            }
+            localStorage.setItem('tagFavorites', JSON.stringify(favorites));
+            renderResult(currentClassified);
+        }
+
+        function copyCategory(groupId) {
+            if (!currentClassified || !currentClassified[groupId]) {
+                showModal('提示', '该分类没有标签');
+                return;
+            }
+
+            const groups = TAG_DICTIONARY.groups;
+            const groupName = groupId === '0' ? '未识别' : (groups[groupId] ? groups[groupId].name : '');
+
+            const tags = [];
+            Object.values(currentClassified[groupId]).forEach(sgTags => {
+                sgTags.forEach(tag => {
+                    tags.push(tag.tag.replace(/_/g, ' '));
+                });
+            });
+
+            const text = `[${groupName}] ${tags.join(', ')}`;
+            navigator.clipboard.writeText(text).then(() => {
+                showModal('成功', `已复制 ${tags.length} 个标签`);
+            }).catch(() => {
+                showModal('错误', '复制失败');
+            });
+        }
+
+        let modalTargetGroupId = '';
+        let searchHistory = JSON.parse(localStorage.getItem('tagSearchHistory') || '[]');
+
+        function saveSearchHistory(query) {
+            if (!query.trim()) return;
+            searchHistory = searchHistory.filter(h => h.toLowerCase() !== query.toLowerCase());
+            searchHistory.unshift(query.trim());
+            localStorage.setItem('tagSearchHistory', JSON.stringify(searchHistory));
+        }
+
+        function clearSearchHistory() {
+            searchHistory = [];
+            localStorage.setItem('tagSearchHistory', JSON.stringify(searchHistory));
+            renderSearchHistory();
+        }
+
+        function renderSearchHistory() {
+            const container = document.getElementById('searchHistoryContent');
+            if (!container) return;
+
+            if (searchHistory.length === 0) {
+                container.innerHTML = '<div style="font-size: 0.75rem; color: var(--text-muted);">暂无搜索历史</div>';
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">';
+            searchHistory.forEach((query, index) => {
+                html += `<div class="history-chip">`;
+                html += `<span onclick="applySearchHistory('${query.replace(/'/g, "\\'")}')" style="cursor: pointer;">${query}</span>`;
+                html += `<button class="history-delete-btn" onclick="deleteSearchHistory(${index})">×</button>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function applySearchHistory(query) {
+            const input = document.getElementById('searchTagInput');
+            if (input) {
+                input.value = query;
+                searchModalTags();
+            }
+        }
+
+        function deleteSearchHistory(index) {
+            searchHistory.splice(index, 1);
+            localStorage.setItem('tagSearchHistory', JSON.stringify(searchHistory));
+            renderSearchHistory();
+        }
+
+        function showAddTagModal() {
+            const groups = TAG_DICTIONARY.groups;
+
+            let html = '<div class="fav-modal-content">';
+            html += `<div style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">选择要添加的标签（点击后自动分类）:</div>`;
+
+            html += '<div style="display: flex; gap: 6px; margin-bottom: 8px;">';
+            html += '<input type="text" id="searchTagInput" placeholder="搜索标签..." oninput="searchModalTags()" style="flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.9rem;">';
+            html += '<button class="btn btn-sm btn-secondary" onclick="clearModalSearch()">清除</button>';
+            html += '</div>';
+
+            html += '<div id="modalSearchHistory" style="margin-bottom: 12px;">';
+            html += '<div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">搜索历史</div>';
+            html += '<div id="searchHistoryContent"></div>';
+            html += '</div>';
+
+            html += '<div id="modalGroupNav" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;">';
+            const groupList = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
+            groupList.forEach(gid => {
+                html += `<button class="btn btn-sm btn-secondary" onclick="renderGroupTags('${gid}')">${groups[gid].name}</button>`;
+            });
+            html += `<button class="btn btn-sm btn-secondary" onclick="renderGroupTags('99')">其他</button>`;
+            html += '</div>';
+
+            html += '<div id="modalTagList" style="max-height: 280px; overflow-y: auto; padding-right: 8px;">';
+            html += renderFavoritesForModal();
+            html += '</div>';
+
+            html += '<div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color);">';
+            html += '<div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">或手动输入标签:</div>';
+            html += '<div style="display: flex; gap: 6px;">';
+            html += '<input type="text" id="customTagInput" placeholder="输入标签，多个用逗号分隔" style="flex: 1; padding: 6px 10px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem;">';
+            html += '<button class="btn btn-sm btn-primary" onclick="addCustomTag()">添加</button>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>';
+
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modalTitle');
+            const text = document.getElementById('modalText');
+            const btn = modal.querySelector('button');
+
+            title.textContent = '添加标签';
+            text.innerHTML = html;
+            text.style.textAlign = 'left';
+            text.style.maxHeight = '500px';
+            text.style.overflowY = 'auto';
+
+            btn.textContent = '关闭';
+            btn.style.display = 'block';
+
+            modal.classList.add('show');
+            renderSearchHistory();
+        }
+
+        function renderFavoritesForModal() {
+            const tags = TAG_DICTIONARY.tags;
+            const allFavTags = Object.keys(favorites).sort();
+
+            if (allFavTags.length === 0) {
+                return '<div style="text-align: center; padding: 16px; color: var(--text-muted);">暂无收藏标签，点击上方分组查看更多</div>';
+            }
+
+            let html = '<div style="margin-bottom: 8px;">';
+            html += '<div style="font-size: 0.8rem; font-weight: bold; color: var(--accent-primary); margin-bottom: 4px; padding-left: 4px;">⭐ 收藏标签</div>';
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+
+            allFavTags.forEach(tag => {
+                const tagInfo = tags[tag];
+                const translation = tagInfo ? tagInfo.translation : '';
+                html += `<div class="fav-tag-chip" onclick="addToCurrentResult('${modalTargetGroupId}', '${tag}')" style="cursor: pointer;">`;
+                html += `<span class="fav-tag-name">${tag.replace(/_/g, ' ')}</span>`;
+                if (translation) {
+                    html += `<span class="fav-tag-translation">(${translation})</span>`;
+                }
+                html += '</div>';
+            });
+
+            html += '</div></div>';
+            return html;
+        }
+
+        function renderGroupTags(groupId) {
+            const groups = TAG_DICTIONARY.groups;
+            const tags = TAG_DICTIONARY.tags;
+            const groupInfo = groups[groupId];
+            const groupName = groupInfo ? groupInfo.name : '其他';
+
+            const groupTags = Object.keys(tags).filter(tag => {
+                const tagInfo = tags[tag];
+                const tagGroupId = tagInfo.group_id !== null && tagInfo.group_id !== undefined ? String(tagInfo.group_id) : '99';
+                return tagGroupId === groupId;
+            }).sort();
+
+            if (groupTags.length === 0) {
+                document.getElementById('modalTagList').innerHTML = '<div style="text-align: center; padding: 16px; color: var(--text-muted);">该分组暂无标签</div>';
+                return;
+            }
+
+            let html = '<div style="margin-bottom: 8px;">';
+            html += `<div style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 4px; padding-left: 4px;">${groupName} (${groupTags.length})</div>`;
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+
+            groupTags.forEach(tag => {
+                const tagInfo = tags[tag];
+                const translation = tagInfo.translation || '';
+                html += `<div class="fav-tag-chip" onclick="addToCurrentResult('${groupId}', '${tag}')" style="cursor: pointer;">`;
+                html += `<span class="fav-tag-name">${tag.replace(/_/g, ' ')}</span>`;
+                if (translation) {
+                    html += `<span class="fav-tag-translation">(${translation})</span>`;
+                }
+                html += '</div>';
+            });
+
+            html += '</div></div>';
+            document.getElementById('modalTagList').innerHTML = html;
+        }
+
+        function searchModalTags() {
+            const input = document.getElementById('searchTagInput');
+            const filter = input ? input.value.trim().toLowerCase() : '';
+
+            if (!filter) {
+                document.getElementById('modalTagList').innerHTML = renderFavoritesForModal();
+                return;
+            }
+
+            saveSearchHistory(input.value.trim());
+
+            const groups = TAG_DICTIONARY.groups;
+            const tags = TAG_DICTIONARY.tags;
+            const filteredTags = Object.keys(tags).filter(t => {
+                const tagInfo = tags[t];
+                const translation = tagInfo.translation || '';
+                return t.toLowerCase().includes(filter) || translation.toLowerCase().includes(filter);
+            }).sort();
+
+            if (filteredTags.length === 0) {
+                document.getElementById('modalTagList').innerHTML = '<div style="text-align: center; padding: 16px; color: var(--text-muted);">未找到匹配的标签</div>';
+                return;
+            }
+
+            let html = '<div style="margin-bottom: 8px;">';
+            html += `<div style="font-size: 0.8rem; font-weight: bold; color: var(--accent-primary); margin-bottom: 4px; padding-left: 4px;">搜索结果 (${filteredTags.length})</div>`;
+            html += '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+
+            filteredTags.forEach(tag => {
+                const tagInfo = tags[tag];
+                const translation = tagInfo.translation || '';
+                const groupId = tagInfo.group_id !== null && tagInfo.group_id !== undefined ? String(tagInfo.group_id) : '99';
+                html += `<div class="fav-tag-chip" onclick="addToCurrentResult('${groupId}', '${tag}')" style="cursor: pointer;">`;
+                html += `<span class="fav-tag-name">${tag.replace(/_/g, ' ')}</span>`;
+                if (translation) {
+                    html += `<span class="fav-tag-translation">(${translation})</span>`;
+                }
+                html += '</div>';
+            });
+
+            html += '</div></div>';
+            document.getElementById('modalTagList').innerHTML = html;
+        }
+
+        function clearModalSearch() {
+            const input = document.getElementById('searchTagInput');
+            if (input) {
+                input.value = '';
+            }
+            searchModalTags();
+        }
+
+        function addToCurrentResult(groupId, tag) {
+            if (!currentClassified) {
+                currentClassified = {};
+                Object.keys(TAG_DICTIONARY.groups).forEach(gid => {
+                    currentClassified[gid] = {};
+                });
+                currentClassified['0'] = {};
+            }
+
+            if (!(groupId in currentClassified)) {
+                currentClassified[groupId] = {};
+            }
+
+            const tagInfo = TAG_DICTIONARY.tags[tag];
+            let subgroupId = '0';
+
+            if (tagInfo) {
+                subgroupId = tagInfo.subgroup_id !== null ? String(tagInfo.subgroup_id) : '0';
+            }
+
+            if (!(subgroupId in currentClassified[groupId])) {
+                currentClassified[groupId][subgroupId] = [];
+            }
+
+            const existingTags = currentClassified[groupId][subgroupId].map(t => t.tag);
+            if (!existingTags.includes(tag)) {
+                currentClassified[groupId][subgroupId].push({
+                    tag: tag,
+                    translation: tagInfo ? tagInfo.translation : '',
+                    isKnown: !!tagInfo,
+                    hot: tagInfo ? (tagInfo.hot || 0) : 0
+                });
+
+                currentClassified[groupId][subgroupId].sort((a, b) => a.tag.localeCompare(b.tag));
+                renderResult(currentClassified);
+                updateStats(currentClassified);
+                hideModal();
+                showModal('成功', '标签已添加');
+            } else {
+                showModal('提示', '该标签已存在');
+            }
+        }
+
+        function addCustomTag() {
+            const input = document.getElementById('customTagInput');
+            const value = input.value.trim();
+
+            if (!value) {
+                showModal('提示', '请输入标签');
+                return;
+            }
+
+            const tags = value.split(/[,，\s]+/).filter(t => t.trim());
+            let addedCount = 0;
+
+            tags.forEach(tag => {
+                tag = tag.trim().toLowerCase().replace(/ /g, '_');
+                if (!currentClassified) {
+                    currentClassified = {};
+                    Object.keys(TAG_DICTIONARY.groups).forEach(gid => {
+                        currentClassified[gid] = {};
+                    });
+                    currentClassified['0'] = {};
+                    currentClassified['99'] = {};
+                }
+
+                const tagInfo = TAG_DICTIONARY.tags[tag];
+                let targetGroupId = '0';
+                let subgroupId = '0';
+
+                if (tagInfo) {
+                    if (tagInfo.group_id !== null && tagInfo.group_id !== undefined) {
+                        targetGroupId = String(tagInfo.group_id);
+                    } else {
+                        targetGroupId = '99';
+                    }
+                    subgroupId = tagInfo.subgroup_id !== null && tagInfo.subgroup_id !== undefined ? String(tagInfo.subgroup_id) : '0';
+                }
+
+                if (!(targetGroupId in currentClassified)) {
+                    currentClassified[targetGroupId] = {};
+                }
+
+                if (!(subgroupId in currentClassified[targetGroupId])) {
+                    currentClassified[targetGroupId][subgroupId] = [];
+                }
+
+                const existingTags = currentClassified[targetGroupId][subgroupId].map(t => t.tag);
+                if (!existingTags.includes(tag)) {
+                    currentClassified[targetGroupId][subgroupId].push({
+                        tag: tag,
+                        translation: tagInfo ? tagInfo.translation : '',
+                        isKnown: !!tagInfo,
+                        hot: tagInfo ? (tagInfo.hot || 0) : 0
+                    });
+
+                    currentClassified[targetGroupId][subgroupId].sort((a, b) => a.tag.localeCompare(b.tag));
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                renderResult(currentClassified);
+                updateStats(currentClassified);
+                input.value = '';
+                showModal('成功', `已添加 ${addedCount} 个标签`);
+            } else {
+                showModal('提示', '所有标签已存在');
+            }
+        }
+
+        function showModal(title, text) {
+            const modal = document.getElementById('modal');
+            const titleEl = document.getElementById('modalTitle');
+            const textEl = document.getElementById('modalText');
+
+            titleEl.textContent = title;
+            textEl.textContent = text;
+            textEl.style.textAlign = 'center';
+            textEl.style.maxHeight = 'none';
+            textEl.style.overflowY = 'visible';
+
+            modal.classList.add('show');
+        }
+
+        function hideModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        async function saveToHistory() {
+            if (!currentClassified) {
+                showModal('提示', '没有可保存的标签');
+                return;
+            }
+
+            try {
+                const history = JSON.parse(localStorage.getItem('tagHistory') || '[]');
+                const newItem = {
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString('zh-CN'),
+                    data: JSON.parse(JSON.stringify(currentClassified))
+                };
+                history.unshift(newItem);
+                localStorage.setItem('tagHistory', JSON.stringify(history));
+                showModal('成功', '已保存到历史记录');
+            } catch (error) {
+                console.error('Save failed:', error);
+                showModal('错误', '保存失败');
+            }
+        }
+
+        function showHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem('tagHistory') || '[]');
+
+                let html = '<div class="history-list">';
+
+                if (!history || history.length === 0) {
+                    html += '<div style="text-align: center; padding: 30px; color: var(--text-muted);">暂无历史记录</div>';
+                } else {
+                    history.forEach(item => {
+                        let tagCount = 0;
+                        Object.values(item.data).forEach(group => {
+                            Object.values(group).forEach(sgTags => {
+                                tagCount += sgTags.length;
+                            });
+                        });
+
+                        html += `<div class="history-item" onclick="loadHistoryItem(${item.id})">`;
+                        html += '<div class="history-item-header">';
+                        html += `<span class="history-time">${item.timestamp}</span>`;
+                        html += `<span class="category-count" style="margin-left: auto;">${tagCount}个标签</span>`;
+                        html += `<button class="history-delete" onclick="event.stopPropagation(); deleteHistoryItem(${item.id})">删除</button>`;
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                }
+
+                html += '</div>';
+
+                const modal = document.getElementById('modal');
+                const title = document.getElementById('modalTitle');
+                const text = document.getElementById('modalText');
+                const btn = modal.querySelector('button');
+
+                title.textContent = '历史记录';
+                text.innerHTML = html;
+                text.style.textAlign = 'left';
+                text.style.maxHeight = '500px';
+                text.style.overflowY = 'auto';
+
+                btn.textContent = '关闭';
+                btn.style.display = 'block';
+
+                modal.classList.add('show');
+            } catch (error) {
+                console.error('Load history failed:', error);
+                showModal('错误', '加载历史记录失败');
+            }
+        }
+
+        function deleteHistoryItem(id) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+
+            try {
+                let history = JSON.parse(localStorage.getItem('tagHistory') || '[]');
+                history = history.filter(item => item.id !== id);
+                localStorage.setItem('tagHistory', JSON.stringify(history));
+                showHistory();
+            } catch (error) {
+                console.error('Delete failed:', error);
+                showModal('错误', '删除失败');
+            }
+        }
+
+        function loadHistoryItem(id) {
+            try {
+                const history = JSON.parse(localStorage.getItem('tagHistory') || '[]');
+                const item = history.find(h => h.id === id);
+
+                if (!item) {
+                    showModal('错误', '未找到该记录');
+                    return;
+                }
+
+                currentClassified = item.data;
+                renderResult(item.data);
+                updateStats(item.data);
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('copyAllBtn').style.display = 'inline-flex';
+                document.getElementById('addTagBtn').style.display = 'inline-flex';
+
+                const allTags = [];
+                Object.values(item.data).forEach(group => {
+                    Object.values(group).forEach(sgTags => {
+                        sgTags.forEach(tag => {
+                            allTags.push(tag.tag.replace(/_/g, ' '));
+                        });
+                    });
+                });
+                document.getElementById('tagInput').value = allTags.join(', ');
+
+                hideModal();
+            } catch (error) {
+                console.error('Load history item failed:', error);
+                showModal('错误', '加载失败');
+            }
+        }
+
+        function generateRandomTags() {
+            if (!TAG_DICTIONARY) {
+                showModal('提示', '标签数据正在加载中，请稍候');
+                return;
+            }
+
+            let historyTagsByGroup = {};
+            Object.keys(TAG_DICTIONARY.groups).forEach(gid => {
+                historyTagsByGroup[gid] = [];
+            });
+
+            try {
+                const history = JSON.parse(localStorage.getItem('tagHistory') || '[]');
+
+                if (history && history.length > 0) {
+                    history.forEach(item => {
+                        Object.entries(item.data).forEach(([gid, group]) => {
+                            if (group && historyTagsByGroup[gid]) {
+                                Object.values(group).forEach(sgTags => {
+                                    sgTags.forEach(t => {
+                                        if (!historyTagsByGroup[gid].includes(t.tag)) {
+                                            historyTagsByGroup[gid].push(t.tag);
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                console.log('Failed to load history, using dictionary instead');
+            }
+
+            let hasHistoryData = false;
+            Object.values(historyTagsByGroup).forEach(tags => {
+                if (tags.length > 0) hasHistoryData = true;
+            });
+
+            if (!hasHistoryData) {
+                Object.keys(historyTagsByGroup).forEach(gid => {
+                    const groupTags = TAG_DICTIONARY.tags_by_group[gid] || {};
+                    Object.values(groupTags).forEach(sgTags => {
+                        sgTags.forEach(t => {
+                            if (!historyTagsByGroup[gid].includes(t.tag)) {
+                                historyTagsByGroup[gid].push(t.tag);
+                            }
+                        });
+                    });
+                });
+            }
+
+            const groupConfig = {
+                '1': { min: 2, max: 4 },
+                '2': { min: 4, max: 7 },
+                '3': { min: 3, max: 5 },
+                '4': { min: 3, max: 5 },
+                '5': { min: 1, max: 3 },
+                '6': { min: 1, max: 3 },
+                '7': { min: 1, max: 3 },
+                '8': { min: 1, max: 2 },
+                '9': { min: 0, max: 2 },
+                '10': { min: 0, max: 2 },
+                '11': { min: 0, max: 1 },
+                '12': { min: 0, max: 2 }
+            };
+
+            const randomTags = [];
+
+            Object.entries(groupConfig).forEach(([gid, config]) => {
+                const catTags = historyTagsByGroup[gid] || [];
+                if (!catTags || catTags.length === 0) return;
+
+                const shuffled = [...catTags].sort(() => Math.random() - 0.5);
+                const count = Math.min(
+                    Math.floor(Math.random() * (config.max - config.min + 1)) + config.min,
+                    shuffled.length
+                );
+
+                for (let i = 0; i < count; i++) {
+                    randomTags.push(shuffled[i]);
+                }
+            });
+
+            if (randomTags.length === 0) {
+                showModal('提示', '暂无足够的标签数据');
+                return;
+            }
+
+            randomTags.sort();
+
+            document.getElementById('tagInput').value = randomTags.join(', ');
+            parseTags();
+
+            showModal('成功', `已生成 ${randomTags.length} 个随机标签组合`);
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDictionary);
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                hideModal();
+            }
+        });
+    </script>
+</body>
+</html>
